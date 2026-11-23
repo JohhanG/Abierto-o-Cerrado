@@ -229,3 +229,4 @@ java -cp bin con_ocp.MainConOcp
 3. **Martin, R. C. (2000).** *Design Principles and Design Patterns*. Object Mentor Technical Paper.
 4. **Larman, C. (2001).** *Protected Variation: The Importance of Being Closed*. IEEE Software, 18(3), 89–91.
 5. **Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (1994).** *Design Patterns: Elements of Reusable Object-Oriented Software*. Addison-Wesley.
+"# Abierto-o-Cerrado" 
