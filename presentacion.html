@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Principio Abierto/Cerrado (OCP) - SOLID</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0d131f;
+      --bg-card: #162032;
+      --bg-card-light: #1f2c42;
+      --accent-green: #38bdf8;
+      --accent-sage: #52b788;
+      --accent-coral: #e07a5f;
+      --accent-yellow: #f4a261;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+    }
+
+    /* Container */
+    #deck {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 3.5rem 5rem 5.5rem 5rem;
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.97) translateY(15px);
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: radial-gradient(circle at 85% 15%, rgba(82, 183, 136, 0.07) 0%, transparent 45%),
+                  radial-gradient(circle at 15% 85%, rgba(224, 122, 95, 0.05) 0%, transparent 45%),
+                  var(--bg-dark);
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1) translateY(0);
+    }
+
+    /* Slide Header */
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.8rem;
+    }
+
+    .badge-pill {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge-sage { background: rgba(82, 183, 136, 0.18); color: #74c69d; border: 1px solid rgba(82, 183, 136, 0.3); }
+    .badge-coral { background: rgba(224, 122, 95, 0.18); color: #f48c06; border: 1px solid rgba(224, 122, 95, 0.3); }
+    .badge-speaker { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+
+    .slide-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: #ffffff;
+      margin-top: 0.4rem;
+    }
+
+    .slide-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+      font-weight: 400;
+    }
+
+    /* Content Area */
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1.5rem;
+    }
+
+    /* Grid layouts */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      align-items: stretch;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+    }
+
+    .grid-5 {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1.1rem;
+      padding: 1.6rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card.hoverable:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .card-sage-top { border-top: 4px solid var(--accent-sage); }
+    .card-coral-top { border-top: 4px solid var(--accent-coral); }
+    .card-yellow-top { border-top: 4px solid var(--accent-yellow); }
+
+    .card-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      color: #fff;
+    }
+
+    .card-text {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      line-height: 1.55;
+    }
+
+    /* Code Blocks */
+    pre {
+      background: #090d16;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 0.85rem;
+      padding: 1.2rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: #e2e8f0;
+      overflow-x: auto;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    .kw { color: #f43f5e; font-weight: 600; }
+    .type { color: #38bdf8; font-weight: 600; }
+    .str { color: #34d399; }
+    .fn { color: #fbbf24; }
+    .comment { color: #64748b; font-style: italic; }
+    .warn-highlight { background: rgba(239, 68, 68, 0.15); border-left: 3px solid #ef4444; padding-left: 4px; display: block; margin: 2px 0; }
+    .good-highlight { background: rgba(52, 211, 153, 0.15); border-left: 3px solid #10b981; padding-left: 4px; display: block; margin: 2px 0; }
+
+    /* Timeline */
+    .timeline {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      position: relative;
+      margin: 1.5rem 0;
+      padding: 0 1rem;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      top: 24px;
+      left: 3rem;
+      right: 3rem;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      z-index: 1;
+    }
+
+    .timeline-node {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 18%;
+    }
+
+    .timeline-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 3px solid var(--accent-sage);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.9rem;
+      box-shadow: 0 0 15px rgba(82, 183, 136, 0.3);
+    }
+
+    .timeline-circle.coral {
+      border-color: var(--accent-coral);
+      box-shadow: 0 0 15px rgba(224, 122, 95, 0.3);
+    }
+
+    .timeline-author {
+      font-weight: 700;
+      color: #fff;
+      font-size: 1.05rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .timeline-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Comparison Table */
+    .compare-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border-radius: 0.85rem;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .compare-table th {
+      background: #111a2a;
+      color: #94a3b8;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.9rem 1.2rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .compare-table td {
+      padding: 0.85rem 1.2rem;
+      font-size: 0.92rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--bg-card);
+      color: #e2e8f0;
+    }
+
+    .compare-table tr:last-child td { border-bottom: none; }
+    .col-bad { color: #f87171 !important; font-weight: 500; }
+    .col-good { color: #34d399 !important; font-weight: 600; }
+
+    /* Footer Controls */
+    #footer-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 48px;
+      background: rgba(13, 19, 31, 0.9);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 2rem;
+      z-index: 100;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn-nav {
+      background: var(--bg-card-light);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.2s;
+    }
+
+    .btn-nav:hover {
+      background: #2b3d5b;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .slide-progress {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      min-width: 65px;
+      text-align: center;
+    }
+
+    /* Speaker Notes Modal */
+    #notes-panel {
+      position: fixed;
+      bottom: 54px;
+      right: 2rem;
+      width: 440px;
+      max-height: 280px;
+      background: #111827;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      display: none;
+      z-index: 99;
+      overflow-y: auto;
+    }
+
+    #notes-panel.open { display: block; }
+    .notes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .notes-title { font-size: 0.85rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; }
+    .notes-speaker { font-size: 0.78rem; font-weight: 700; color: #f4a261; }
+    .notes-content { font-size: 0.9rem; line-height: 1.5; color: #e2e8f0; }
+
+    /* Diagrams SVG */
+    .uml-box {
+      border: 2px solid var(--accent-sage);
+      border-radius: 8px;
+      background: #111a2a;
+      padding: 0.8rem 1rem;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+
+<div id="deck">
+
+  <!-- SLIDE 1: Portada -->
+  <section class="slide active" id="slide-1">
+    <div class="slide-header">
+      <span class="badge-pill badge-sage">Programación II • Universidad</span>
+      <span class="badge-pill badge-speaker">Expositora: Heidy Valentina</span>
+    </div>
+    <div class="slide-body" style="justify-content: center; align-items: flex-start; max-width: 900px;">
+      <div style="display: flex; align-items: center; gap: 1.2rem; margin-bottom: 1.5rem;">
+        <div style="width: 72px; height: 72px; border-radius: 18px; background: linear-gradient(135deg, #52b788, #2ec4b6); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: #0d131f; box-shadow: 0 10px 25px rgba(82, 183, 136, 0.4);">O</div>
+        <div>
+          <span style="font-size: 0.95rem; font-weight: 700; letter-spacing: 0.1em; color: var(--accent-sage); text-transform: uppercase;">Principios SOLID de Diseño</span>
+          <h1 style="font-size: 3.4rem; font-weight: 900; line-height: 1.05; letter-spacing: -0.03em;">Principio Abierto / Cerrado</h1>
+          <p style="font-size: 1.35rem; color: #94a3b8; font-weight: 400; margin-top: 0.4rem;">Open / Closed Principle (OCP)</p>
+        </div>
+      </div>
+      
+      <div style="margin-top: 2.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1.3rem 2rem; width: 100%;">
+        <div style="font-size: 0.78rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem;">Integrantes del Grupo 2:</div>
+        <div style="display: flex; gap: 2.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--accent-sage);"></div>
+            <strong style="font-size: 1.05rem;">Heidy Valentina</strong>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--accent-coral);"></div>
+            <strong style="font-size: 1.05rem;">Santiago Palma</strong>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--accent-green);"></div>
+            <strong style="font-size: 1.05rem;">Johan Gonzalez</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 0.85rem; color: #64748b;">Presiona <kbd style="background: #1e293b; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border);">→</kbd> o <kbd style="background: #1e293b; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border);">Espacio</kbd> para avanzar • Presiona <kbd style="background: #1e293b; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border);">N</kbd> para notas de orador</div>
+  </section>
+
+  <!-- SLIDE 2: El cambio es inevitable -->
+  <section class="slide" id="slide-2">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Contexto y Fundamentos</span>
+        <h2 class="slide-title">El cambio es inevitable; el riesgo no</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositora: Heidy</span>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2">
+        <div class="card card-coral-top">
+          <div class="card-title">⚠️ La fragilidad del código en producción</div>
+          <p class="card-text" style="font-size: 1.05rem;">
+            El software cambia durante toda su vida útil. Cada modificación manual sobre código que ya funciona puede introducir <strong>errores colaterales imprevistos (regresiones)</strong>.
+          </p>
+          <p class="card-text" style="margin-top: 1rem;">
+            Un pequeño cambio para una nueva regla de negocio puede romper supuestos de módulos distantes que daban por seguro el comportamiento original.
+          </p>
+        </div>
+
+        <div class="card card-sage-top">
+          <div class="card-title">🛡️ El objetivo del Principio OCP</div>
+          <p class="card-text" style="font-size: 1.05rem;">
+            El OCP busca que los sistemas de software crezcan <strong>incorporando nuevo código</strong> en lugar de reescribir y alterar el código preexistente y probado.
+          </p>
+          <div style="margin-top: 1.5rem; background: #0b121e; padding: 1rem; border-radius: 8px; border-left: 3px solid var(--accent-sage);">
+            <div style="font-size: 0.85rem; color: #74c69d; font-weight: 700;">REGLA DE ORO:</div>
+            <div style="font-size: 0.95rem; color: #f1f5f9; margin-top: 0.2rem;">Localizar los cambios futuros detrás de contratos abstractos estables.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagrama de flujo -->
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 2rem; display: flex; justify-content: space-around; align-items: center;">
+        <div style="text-align: center;">
+          <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 700;">REQUERIMIENTO</div>
+          <div style="font-weight: 800; color: #fff; font-size: 1.1rem; margin-top: 0.2rem;">Nuevo Cambio</div>
+        </div>
+        <div style="color: var(--accent-sage); font-size: 1.5rem;">➔</div>
+        <div style="text-align: center; border: 2px dashed rgba(255,255,255,0.2); padding: 0.5rem 1.2rem; border-radius: 8px;">
+          <div style="font-size: 0.8rem; color: #74c69d; font-weight: 700;">NÚCLEO ESTABLE</div>
+          <div style="font-weight: 800; color: #fff; font-size: 1.1rem; margin-top: 0.2rem;">Protegido / Intocable</div>
+        </div>
+        <div style="color: var(--accent-sage); font-size: 1.5rem;">➔</div>
+        <div style="text-align: center;">
+          <div style="font-size: 0.8rem; color: var(--accent-sage); font-weight: 700;">RESULTADO</div>
+          <div style="font-weight: 800; color: #52b788; font-size: 1.1rem; margin-top: 0.2rem;">Cero Regresiones</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 3: Objetivos -->
+  <section class="slide" id="slide-3">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Hoja de Ruta</span>
+        <h2 class="slide-title">Objetivos de la Presentación</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositora: Heidy</span>
+    </div>
+    <div class="slide-body">
+      <div class="grid-4">
+        <div class="card card-sage-top hoverable">
+          <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">🎯</div>
+          <div class="card-title">1. Comprender</div>
+          <p class="card-text">Comprender la necesidad y formulación formal del Principio Abierto/Cerrado en el diseño moderno.</p>
+        </div>
+
+        <div class="card card-coral-top hoverable">
+          <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">⚖️</div>
+          <div class="card-title">2. Comparar</div>
+          <p class="card-text">Analizar sus dos interpretaciones históricas: Bertrand Meyer (1988) vs. Robert C. Martin (1996).</p>
+        </div>
+
+        <div class="card card-yellow-top hoverable">
+          <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">💻</div>
+          <div class="card-title">3. Demostrar</div>
+          <p class="card-text">Demostrar mediante código Java el contraste entre un diseño vulnerable y uno extensivo mediante polimorfismo.</p>
+        </div>
+
+        <div class="card card-sage-top hoverable">
+          <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">🛡️</div>
+          <div class="card-title">4. Limitar</div>
+          <p class="card-text">Identificar los límites del OCP y cómo el principio YAGNI evita caer en la sobreingeniería.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 4: Línea de tiempo corregida -->
+  <section class="slide" id="slide-4">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Historia y Evolución</span>
+        <h2 class="slide-title">Una idea que evoluciona en el tiempo</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositora: Heidy</span>
+    </div>
+    <div class="slide-body">
+      <div class="timeline">
+        <div class="timeline-node">
+          <div class="timeline-circle">1988</div>
+          <div class="timeline-author">Bertrand Meyer</div>
+          <div class="timeline-desc">Crea el OCP en <em>Object-Oriented Software Construction</em> usando herencia directa de clases.</div>
+        </div>
+
+        <div class="timeline-node">
+          <div class="timeline-circle coral">1992</div>
+          <div class="timeline-author">Ivar Jacobson</div>
+          <div class="timeline-desc">Establece que los sistemas cambian durante todo su ciclo y el diseño debe anticiparlo.</div>
+        </div>
+
+        <div class="timeline-node">
+          <div class="timeline-circle">1996</div>
+          <div class="timeline-author">Robert C. Martin</div>
+          <div class="timeline-desc">Reformula OCP en <em>The C++ Report</em>: sustituye la herencia por interfaces y polimorfismo.</div>
+        </div>
+
+        <div class="timeline-node">
+          <div class="timeline-circle coral">2000</div>
+          <div class="timeline-author">SOLID</div>
+          <div class="timeline-desc">Uncle Bob agrupa OCP como la <strong>"O"</strong> de los 5 principios de arquitectura de software.</div>
+        </div>
+
+        <div class="timeline-node">
+          <div class="timeline-circle">2001</div>
+          <div class="timeline-author">Craig Larman</div>
+          <div class="timeline-desc">Presenta el patrón GRASP <em>Protected Variation</em>: proteger los puntos de inestabilidad con interfaces.</div>
+        </div>
+      </div>
+
+      <div style="background: rgba(82, 183, 136, 0.08); border-left: 4px solid var(--accent-sage); padding: 1rem 1.5rem; border-radius: 0 10px 10px 0;">
+        <span style="font-weight: 700; color: var(--accent-sage);">Conclusión Histórica:</span>
+        <span style="color: #cbd5e1; margin-left: 0.5rem;">El principio pasó de depender de la <em>herencia estricta</em> a sustentarse en la <em>abstracción polimórfica</em>, más flexible y desacoplada.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 5: Definición formal -->
+  <section class="slide" id="slide-5">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Definición Canónica</span>
+        <h2 class="slide-title">Abierto para extensión. Cerrado para modificación.</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositora: Heidy</span>
+    </div>
+    <div class="slide-body">
+      <div style="text-align: center; max-width: 850px; margin: 0 auto;">
+        <p style="font-size: 1.55rem; font-weight: 500; line-height: 1.4; color: #f1f5f9;">
+          "Las entidades de software (clases, módulos, funciones) deben estar <span style="color: var(--accent-sage); font-weight: 800; border-bottom: 2px solid var(--accent-sage);">abiertas para su extensión</span>, pero <span style="color: var(--accent-coral); font-weight: 800; border-bottom: 2px solid var(--accent-coral);">cerradas para su modificación</span>."
+        </p>
+        <span style="display: block; margin-top: 0.8rem; color: #94a3b8; font-size: 0.95rem;">— Robert C. Martin (Uncle Bob)</span>
+      </div>
+
+      <div class="grid-2" style="margin-top: 1rem;">
+        <div class="card card-sage-top" style="text-align: center; padding: 2rem;">
+          <div style="font-size: 2.2rem; color: var(--accent-sage); font-weight: 900; margin-bottom: 0.5rem;">ABIERTO</div>
+          <div class="card-title" style="color: var(--accent-sage);">Para la Extensión</div>
+          <p class="card-text" style="font-size: 1.05rem;">
+            Significa que el comportamiento de un módulo puede ser ampliado. Cuando los requerimientos del negocio cambian, podemos hacer que el módulo se comporte de maneras nuevas y diferentes.
+          </p>
+        </div>
+
+        <div class="card card-coral-top" style="text-align: center; padding: 2rem;">
+          <div style="font-size: 2.2rem; color: var(--accent-coral); font-weight: 900; margin-bottom: 0.5rem;">CERRADO</div>
+          <div class="card-title" style="color: var(--accent-coral);">Para la Modificación</div>
+          <p class="card-text" style="font-size: 1.05rem;">
+            Significa que nadie tiene permiso para alterar el código fuente ya existente y probado. Ese código permanece intacto y blindado contra posibles regresiones y efectos no deseados.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 6: Dos interpretaciones -->
+  <section class="slide" id="slide-6">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Evolución Teórica</span>
+        <h2 class="slide-title">Dos interpretaciones del mismo principio</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositora: Heidy</span>
+    </div>
+    <div class="slide-body">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Criterio</th>
+            <th>1. Enfoque de Bertrand Meyer (1988)</th>
+            <th>2. Enfoque Polimórfico de Robert Martin (1996)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight: 700;">Mecanismo principal</td>
+            <td>Herencia clásica de clases concretas</td>
+            <td><strong>Interfaces y Clases Abstractas (Polimorfismo)</strong></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Cómo se extiende</td>
+            <td>Creando una subclase que hereda variables y métodos</td>
+            <td>Implementando el contrato de la interfaz</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Acoplamiento</td>
+            <td class="col-bad">Fuerte acoplamiento con la clase base (herencia rígida)</td>
+            <td class="col-good">Débil acoplamiento con abstracciones estables</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Estado en la industria</td>
+            <td>Considerado restrictivo o frágil en sistemas grandes</td>
+            <td class="col-good">Estándar adoptado universalmente en arquitectura limpia</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem;">
+        <span style="font-size: 1.8rem;">💡</span>
+        <div style="font-size: 0.95rem; color: #cbd5e1;">
+          <strong>Regla moderna:</strong> Preferir <em>composición y contratos abstractos</em> antes que <em>herencia profunda</em> para evitar la fragilidad de las clases base.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 7: El Problema (Switch) -->
+  <section class="slide" id="slide-7">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-coral">Anti-patrón / Código Malo</span>
+        <h2 class="slide-title">El Problema: El 'switch' que se reabre siempre</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositor: Santiago</span>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2">
+        <div>
+          <pre><code><span class="kw">public class</span> <span class="type">GraphicEditor</span> {
+
+    <span class="kw">public void</span> <span class="fn">drawShape</span>(<span class="type">Shape</span> s) {
+        <span class="kw">switch</span> (s.getType()) {
+            <span class="kw">case</span> <span class="str">"CIRCLE"</span> -> drawCircle(s);
+            <span class="kw">case</span> <span class="str">"SQUARE"</span> -> drawSquare(s);
+            
+            <span class="comment">// ❌ NUEVA FIGURA: ¡Obligados a modificar aquí!</span>
+<span class="warn-highlight">            <span class="kw">case</span> <span class="str">"TRIANGLE"</span> -> drawTriangle(s);</span>
+        }
+    }
+
+    <span class="kw">private void</span> <span class="fn">drawCircle</span>(<span class="type">Shape</span> s) { ... }
+    <span class="kw">private void</span> <span class="fn">drawSquare</span>(<span class="type">Shape</span> s) { ... }
+    <span class="kw">private void</span> <span class="fn">drawTriangle</span>(<span class="type">Shape</span> s) { ... }
+}</code></pre>
+        </div>
+
+        <div style="display: flex; flex-direction: column; justify-content: center; gap: 1.2rem;">
+          <div class="card card-coral-top">
+            <div class="card-title" style="color: #f87171;">❌ ¿Por qué viola el OCP?</div>
+            <ul style="margin-left: 1.2rem; color: #cbd5e1; font-size: 0.95rem; line-height: 1.6;">
+              <li><strong>No está cerrado a modificación:</strong> Cada vez que el negocio inventa una figura nueva, debemos abrir y alterar <code>GraphicEditor</code>.</li>
+              <li><strong>Riesgo de regresión:</strong> Tocar este método puede accidentalmente romper el dibujado del círculo o del cuadrado.</li>
+              <li><strong>Re-testeo masivo:</strong> Obliga a re-compilar y volver a certificar la clase completa en cada sprint.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 8: La Solución (Abstracción) -->
+  <section class="slide" id="slide-8">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Solución con OCP</span>
+        <h2 class="slide-title">La Solución: Depender de una Abstracción</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositor: Santiago</span>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2">
+        <div>
+          <pre><code><span class="comment">// 1. Contrato abstracto estable</span>
+<span class="kw">public interface</span> <span class="type">Shape</span> {
+    <span class="kw">void</span> <span class="fn">draw</span>();
+}
+
+<span class="comment">// 2. Clase cliente CERRADA a modificación</span>
+<span class="kw">public class</span> <span class="type">GraphicEditor</span> {
+    <span class="kw">public void</span> <span class="fn">drawShape</span>(<span class="type">Shape</span> s) {
+<span class="good-highlight">        s.draw(); <span class="comment">// ¡Polimorfismo dinámico puro!</span></span>
+    }
+}
+
+<span class="comment">// 3. Extensión libre sin tocar GraphicEditor</span>
+<span class="kw">public class</span> <span class="type">Triangle</span> <span class="kw">implements</span> <span class="type">Shape</span> {
+    <span class="kw">public void</span> <span class="fn">draw</span>() { System.out.println(<span class="str">"Dibujando triángulo"</span>); }
+}</code></pre>
+        </div>
+
+        <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1rem;">
+          <!-- Diagrama UML Realization -->
+          <div class="uml-box" style="width: 240px;">
+            <div style="font-size: 0.75rem; color: #74c69d; font-weight: 700;">«interface»</div>
+            <div style="font-weight: 800; font-size: 1.1rem; color: #fff;">Shape</div>
+            <div style="border-top: 1px solid var(--border); margin-top: 6px; padding-top: 4px; font-size: 0.85rem; color: #94a3b8;">+ draw(): void</div>
+          </div>
+
+          <!-- Flechas punteadas SVG de realización UML -->
+          <svg width="280" height="40" viewBox="0 0 280 40">
+            <path d="M 60 40 L 120 10" stroke="#74c69d" stroke-width="2" stroke-dasharray="4,4" fill="none" />
+            <polygon points="120,5 130,10 120,15" fill="#111a2a" stroke="#74c69d" stroke-width="2" />
+            <path d="M 220 40 L 160 10" stroke="#74c69d" stroke-width="2" stroke-dasharray="4,4" fill="none" />
+            <polygon points="160,5 150,10 160,15" fill="#111a2a" stroke="#74c69d" stroke-width="2" />
+          </svg>
+
+          <div style="display: flex; gap: 1.5rem;">
+            <div class="uml-box" style="width: 130px; border-color: rgba(255,255,255,0.2);">
+              <div style="font-weight: 700; color: #fff;">Circle</div>
+              <div style="font-size: 0.75rem; color: #74c69d;">+ draw()</div>
+            </div>
+            <div class="uml-box" style="width: 130px; border-color: rgba(255,255,255,0.2);">
+              <div style="font-weight: 700; color: #fff;">Triangle</div>
+              <div style="font-size: 0.75rem; color: #74c69d;">+ draw()</div>
+            </div>
+          </div>
+          
+          <div style="font-size: 0.85rem; color: #74c69d; text-align: center; margin-top: 0.5rem;">
+            ✔ Para añadir un Pentágono solo creas una clase nueva. <strong>GraphicEditor ni se entera.</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 9: Tres Mecanismos -->
+  <section class="slide" id="slide-9">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Ingeniería de Software</span>
+        <h2 class="slide-title">Tres mecanismos para cerrar un módulo</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositor: Santiago</span>
+    </div>
+    <div class="slide-body">
+      <div class="grid-3">
+        <div class="card card-sage-top hoverable">
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(82, 183, 136, 0.2); color: var(--accent-sage); font-weight: 800; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">1</div>
+          <div class="card-title">Abstracciones Estables</div>
+          <p class="card-text">
+            Diseñar <strong>interfaces o clases abstractas</strong> que definen el contrato funcional invariable. Lo que es común no cambia; lo que varía se abstrae.
+          </p>
+        </div>
+
+        <div class="card card-coral-top hoverable">
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(224, 122, 95, 0.2); color: var(--accent-coral); font-weight: 800; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">2</div>
+          <div class="card-title">Polimorfismo Dinámico</div>
+          <p class="card-text">
+            Delegar la decisión de ejecución al despacho dinámico en tiempo de ejecución. La clase invocadora sólo sabe qué mensaje enviar, no cómo se resuelve.
+          </p>
+        </div>
+
+        <div class="card card-yellow-top hoverable">
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(244, 162, 97, 0.2); color: var(--accent-yellow); font-weight: 800; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">3</div>
+          <div class="card-title">Composición e Inyección</div>
+          <p class="card-text">
+            Inyectar el comportamiento en el constructor o método en lugar de crear instancias rígidas con <code>new</code> dentro de la clase de negocio.
+          </p>
+        </div>
+      </div>
+
+      <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem; text-align: center; color: #cbd5e1; font-size: 0.95rem;">
+        <strong>Protected Variation (Larman, 2001):</strong> "Identifica los puntos de variación previstos y crea una interfaz estable alrededor de ellos."
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 10: Caso Práctico Descuentos -->
+  <section class="slide" id="slide-10">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Caso Real de Negocio</span>
+        <h2 class="slide-title">Caso Práctico: Descuentos en Tienda</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositor: Santiago</span>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2">
+        <div>
+          <div style="color: #f87171; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.4rem;">❌ SIN OCP: Código Vulnerable</div>
+          <pre><code><span class="kw">public class</span> <span class="type">CalculadoraPrecios</span> {
+    <span class="kw">public double</span> <span class="fn">calcular</span>(<span class="type">double</span> precio, <span class="type">String</span> promo) {
+        <span class="kw">if</span> (promo.equals(<span class="str">"ESTUDIANTE"</span>)) {
+            <span class="kw">return</span> precio * 0.90;
+        } <span class="kw">else if</span> (promo.equals(<span class="str">"BLACK_FRIDAY"</span>)) {
+            <span class="kw">return</span> precio * 0.70;
+        } <span class="kw">else if</span> (promo.equals(<span class="str">"NAVIDAD"</span>)) {
+            <span class="kw">return</span> precio * 0.80; <span class="comment">// Modificando!</span>
+        }
+        <span class="kw">return</span> precio;
+    }
+}</code></pre>
+        </div>
+
+        <div>
+          <div style="color: #34d399; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.4rem;">✔ CON OCP: Escalable y Limpio</div>
+          <pre><code><span class="kw">public interface</span> <span class="type">Descuento</span> {
+    <span class="kw">double</span> <span class="fn">aplicar</span>(<span class="type">double</span> base);
+}
+
+<span class="kw">public class</span> <span class="type">DescuentoBlackFriday</span> <span class="kw">implements</span> <span class="type">Descuento</span> {
+    <span class="kw">public double</span> <span class="fn">aplicar</span>(<span class="type">double</span> base) { <span class="kw">return</span> base * 0.70; }
+}
+
+<span class="comment">// El procesador jamás se reabre ni se altera</span>
+<span class="kw">public class</span> <span class="type">CalculadoraPrecios</span> {
+    <span class="kw">public double</span> <span class="fn">calcular</span>(<span class="type">double</span> base, <span class="type">Descuento</span> desc) {
+        <span class="kw">return</span> desc.aplicar(base);
+    }
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 11: Java en el mundo real -->
+  <section class="slide" id="slide-11">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Adopción Industrial</span>
+        <h2 class="slide-title">OCP en el Ecosistema Java del Mundo Real</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositor: Santiago</span>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2">
+        <div class="card card-sage-top">
+          <div class="card-title">🗄️ JDBC (Java Database Connectivity)</div>
+          <p class="card-text">
+            La librería estándar define las interfaces <code>Connection</code>, <code>Statement</code> y <code>ResultSet</code>.
+          </p>
+          <div style="margin-top: 1rem; background: #0c1422; padding: 1rem; border-radius: 8px;">
+            <p style="font-size: 0.88rem; color: #cbd5e1;">
+              <strong>Extensión sin modificación:</strong> MySQL, PostgreSQL u Oracle crean su propio driver <code>.jar</code>. <strong>Java nunca necesitó ser recompilado</strong> para soportar un nuevo motor de base de datos.
+            </p>
+          </div>
+        </div>
+
+        <div class="card card-coral-top">
+          <div class="card-title">🌐 Servlet API & Spring Framework</div>
+          <p class="card-text">
+            Los servidores web (Tomcat, Jetty) dialogan exclusivamente con la interfaz abstracta <code>HttpServlet</code>.
+          </p>
+          <div style="margin-top: 1rem; background: #0c1422; padding: 1rem; border-radius: 8px;">
+            <p style="font-size: 0.88rem; color: #cbd5e1;">
+              <strong>Extensión sin modificación:</strong> Nosotros escribimos nuestros controladores y lógica de negocio implementando esa interfaz sin tener que alterar el código del servidor Tomcat.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 12: Tabla Antes vs Después -->
+  <section class="slide" id="slide-12">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Balance Técnico</span>
+        <h2 class="slide-title">Comparativa: Antes vs. Después de OCP</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositor: Johan</span>
+    </div>
+    <div class="slide-body">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Criterio</th>
+            <th>Sin OCP (Código Acoplado)</th>
+            <th>Con OCP (Código Polimórfico)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight: 700;">Incorporación de cambios</td>
+            <td class="col-bad">Editar y reabrir clases existentes</td>
+            <td class="col-good">Crear una nueva clase que implementa la interfaz</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Riesgo de regresión</td>
+            <td class="col-bad">Alto (puede romper funcionalidades ya operativas)</td>
+            <td class="col-good">Nulo (el código viejo no se toca)</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Pruebas Unitarias</td>
+            <td class="col-bad">Obliga a re-ejecutar pruebas en todo el módulo</td>
+            <td class="col-good">Solo se prueba la nueva clase creada</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Legibilidad</td>
+            <td class="col-bad">Condicionales (if/switch) gigantescos</td>
+            <td class="col-good">Clases pequeñas con propósito explícito</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Costo Inicial</td>
+            <td class="col-good">Rápido al inicio (programar un if)</td>
+            <td class="col-bad">Mayor esfuerzo inicial de modelado y abstracción</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SLIDE 13: Patrones que materializan OCP -->
+  <section class="slide" id="slide-13">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Patrones de Diseño (GoF)</span>
+        <h2 class="slide-title">Patrones de Diseño que materializan OCP</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositor: Johan</span>
+    </div>
+    <div class="slide-body">
+      <div class="grid-3">
+        <div class="card card-sage-top hoverable">
+          <div class="badge-pill badge-sage" style="align-self: flex-start; margin-bottom: 0.8rem;">STRATEGY</div>
+          <div class="card-title">Patrón Estrategia</div>
+          <p class="card-text">
+            Encapsula algoritmos intercambiables bajo una misma interfaz. Permite cambiar el comportamiento en tiempo de ejecución (ej. métodos de pago, cálculo de rutas, compresión).
+          </p>
+        </div>
+
+        <div class="card card-coral-top hoverable">
+          <div class="badge-pill badge-coral" style="align-self: flex-start; margin-bottom: 0.8rem;">DECORATOR</div>
+          <div class="card-title">Patrón Decorador</div>
+          <p class="card-text">
+            Añade responsabilidades y comportamientos adicionales a un objeto dinámicamente envolviéndolo, sin tener que alterar la clase original ni crear subclases excesivas.
+          </p>
+        </div>
+
+        <div class="card card-yellow-top hoverable">
+          <div class="badge-pill badge-yellow" style="align-self: flex-start; margin-bottom: 0.8rem; background: rgba(244,162,97,0.15); color: #f4a261; border: 1px solid rgba(244,162,97,0.3);">TEMPLATE METHOD</div>
+          <div class="card-title">Método Plantilla</div>
+          <p class="card-text">
+            Define el esqueleto invariable de un algoritmo en una clase base cerrada, y delega los pasos variables específicos a subclases que extienden el proceso.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 14: Los límites y YAGNI -->
+  <section class="slide" id="slide-14">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-coral">Pragmatismo & Buenas Prácticas</span>
+        <h2 class="slide-title">Cerrar todo es imposible — y contraproducente</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositor: Johan</span>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2">
+        <div class="card card-sage-top">
+          <div class="card-title">🟢 Variación Real y Frecuente</div>
+          <p class="card-text" style="font-size: 1.05rem;">
+            Se justifica aplicar OCP cuando el negocio cambia repetidamente en ese punto específico (ej. promociones, pasarelas de pago, exportación a formatos).
+          </p>
+          <div style="margin-top: 1rem; color: #74c69d; font-weight: 700;">✔ Protege la inversión y reduce costos de mantenimiento.</div>
+        </div>
+
+        <div class="card card-coral-top">
+          <div class="card-title">🔴 Variación Hipotética (Sobreingeniería)</div>
+          <p class="card-text" style="font-size: 1.05rem;">
+            Crear interfaces y fábricas para módulos que <strong>nunca van a cambiar</strong> añade complejidad accidental y código difícil de navegar.
+          </p>
+          <div style="margin-top: 1rem; color: #f87171; font-weight: 700;">❌ Viola el principio YAGNI (You Aren't Gonna Need It).</div>
+        </div>
+      </div>
+
+      <div style="background: #111a2a; border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; text-align: center;">
+        <span style="color: #f4a261; font-weight: 800; font-size: 1.05rem;">Regla del Pulgar de Robert Martin:</span>
+        <span style="color: #cbd5e1; margin-left: 0.5rem;">"La primera vez que escribes código, hazlo simple. Solo cuando el cambio ocurra una segunda o tercera vez, refactoriza aplicando OCP."</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 15: OCP en SOLID -->
+  <section class="slide" id="slide-15">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Arquitectura Limpia</span>
+        <h2 class="slide-title">OCP funciona dentro del sistema SOLID</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositor: Johan</span>
+    </div>
+    <div class="slide-body">
+      <div class="grid-5" style="margin-bottom: 1.5rem;">
+        <div class="card" style="text-align: center; padding: 1rem;">
+          <div style="font-size: 2rem; font-weight: 900; color: #94a3b8;">S</div>
+          <div style="font-size: 0.8rem; font-weight: 700;">Single Responsibility</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 1rem; border-color: var(--accent-sage); background: rgba(82, 183, 136, 0.1);">
+          <div style="font-size: 2rem; font-weight: 900; color: var(--accent-sage);">O</div>
+          <div style="font-size: 0.8rem; font-weight: 800; color: var(--accent-sage);">Open / Closed</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 1rem;">
+          <div style="font-size: 2rem; font-weight: 900; color: #94a3b8;">L</div>
+          <div style="font-size: 0.8rem; font-weight: 700;">Liskov Substitution</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 1rem;">
+          <div style="font-size: 2rem; font-weight: 900; color: #94a3b8;">I</div>
+          <div style="font-size: 0.8rem; font-weight: 700;">Interface Segregation</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 1rem; border-color: var(--accent-coral); background: rgba(224, 122, 95, 0.1);">
+          <div style="font-size: 2rem; font-weight: 900; color: var(--accent-coral);">D</div>
+          <div style="font-size: 0.8rem; font-weight: 800; color: var(--accent-coral);">Dependency Inversion</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card card-sage-top">
+          <div class="card-title">🔗 La 'D' respalda directamente a la 'O'</div>
+          <p class="card-text">
+            El <strong>Principio de Inversión de Dependencias (DIP)</strong> es el habilitador del OCP: establece que los módulos de alto nivel no deben depender de implementaciones concretas, sino de abstracciones. Sin DIP, no se puede cerrar una clase.
+          </p>
+        </div>
+
+        <div class="card card-coral-top">
+          <div class="card-title">🔄 La 'L' garantiza la sustitución segura</div>
+          <p class="card-text">
+            El <strong>Principio de Sustitución de Liskov (LSP)</strong> asegura que cualquier nueva subclase o implementación que añadamos respete el contrato de la interfaz sin alterar el comportamiento esperado por el cliente.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 16: Conclusiones -->
+  <section class="slide" id="slide-16">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Conclusiones</span>
+        <h2 class="slide-title">Diseñar para cambiar, sin diseñar de más</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Expositor: Johan</span>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2">
+        <div class="card card-sage-top">
+          <div class="card-title">1. Estabilidad mediante Contratos</div>
+          <p class="card-text">
+            Proteger el código estable existente aislándolo detrás de interfaces bien definidas, garantizando cero impacto sobre funcionalidades en producción.
+          </p>
+        </div>
+
+        <div class="card card-coral-top">
+          <div class="card-title">2. Aplicación con Evidencia</div>
+          <p class="card-text">
+            Aplicar OCP en puntos de variación frecuentes y demostrados, evitando la sobreingeniería y el exceso prematuro de capas.
+          </p>
+        </div>
+
+        <div class="card card-yellow-top">
+          <div class="card-title">3. Polimorfismo vs Herencia</div>
+          <p class="card-text">
+            Preferir siempre la abstracción polimórfica (Martin) antes que la herencia estricta de implementación (Meyer) para mantener bajo acoplamiento.
+          </p>
+        </div>
+
+        <div class="card card-sage-top">
+          <div class="card-title">4. Demostración en Código</div>
+          <p class="card-text">
+            El repositorio en GitHub incluye ejemplos funcionales en Java con pruebas unitarias demostrando la refactorización paso a paso.
+          </p>
+        </div>
+      </div>
+
+      <div style="background: linear-gradient(135deg, rgba(82, 183, 136, 0.2), rgba(56, 189, 248, 0.2)); border: 1px solid var(--accent-sage); border-radius: 12px; padding: 1.2rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-weight: 800; font-size: 1.15rem; color: #fff;">¿Preguntas o comentarios?</div>
+          <div style="font-size: 0.88rem; color: #94a3b8;">Muchas gracias por su atención. Pasamos a la demostración en vivo del repositorio.</div>
+        </div>
+        <div class="badge-pill badge-sage" style="font-size: 0.85rem; padding: 0.5rem 1rem;">GitHub Repo Demo ➔</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 17: Bibliografía -->
+  <section class="slide" id="slide-17">
+    <div class="slide-header">
+      <div>
+        <span class="badge-pill badge-sage">Rigor Académico</span>
+        <h2 class="slide-title">Referencias Bibliográficas (Normas APA)</h2>
+      </div>
+      <span class="badge-pill badge-speaker">Grupo 2</span>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2">
+        <div class="card">
+          <ol style="margin-left: 1.2rem; color: #cbd5e1; font-size: 0.88rem; line-height: 1.8;">
+            <li><strong>Meyer, B. (1988).</strong> <em>Object-Oriented Software Construction</em>. Prentice Hall. ISBN 0-13-629049-3.</li>
+            <li><strong>Jacobson, I. (1992).</strong> <em>Object-Oriented Software Engineering: A Use Case Driven Approach</em>. Addison-Wesley.</li>
+            <li><strong>Martin, R. C. (1996).</strong> "The Open-Closed Principle". <em>C++ Report</em>, enero. cs.utexas.edu/~downing/papers/OCP-1996.pdf</li>
+          </ol>
+        </div>
+
+        <div class="card">
+          <ol start="4" style="margin-left: 1.2rem; color: #cbd5e1; font-size: 0.88rem; line-height: 1.8;">
+            <li><strong>Martin, R. C. (2000).</strong> "Design Principles and Design Patterns". <em>Object Mentor Technical White Paper</em>.</li>
+            <li><strong>Larman, C. (2001).</strong> "Protected Variation: The Importance of Being Closed". <em>IEEE Software</em>, 18(3), 89–91.</li>
+            <li><strong>Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (1994).</strong> <em>Design Patterns: Elements of Reusable Object-Oriented Software</em>. Addison-Wesley.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Footer Controls -->
+<div id="footer-bar">
+  <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 600;">
+    Principio Abierto / Cerrado (OCP) • <span id="slide-author" style="color: #38bdf8;">Heidy Valentina</span>
+  </div>
+
+  <div class="controls">
+    <button class="btn-nav" id="btn-prev">◀ Anterior</button>
+    <div class="slide-progress" id="slide-indicator">1 / 17</div>
+    <button class="btn-nav" id="btn-next">Siguiente ▶</button>
+    <button class="btn-nav" id="btn-notes" title="Alternar notas del orador (Tecla N)">🎙️ Notas (N)</button>
+    <button class="btn-nav" id="btn-fs" title="Pantalla completa (Tecla F)">⛶ Pantalla completa</button>
+  </div>
+</div>
+
+<!-- Speaker Notes Floating Panel -->
+<div id="notes-panel">
+  <div class="notes-header">
+    <div class="notes-title">Guion de Exposición</div>
+    <div class="notes-speaker" id="speaker-badge">Heidy Valentina</div>
+  </div>
+  <div class="notes-content" id="speaker-script">
+    Buenas tardes profesor y compañeros. Hoy nuestro grupo va a exponer el Principio Abierto/Cerrado (Open/Closed Principle), que representa la letra 'O' dentro de los principios fundamentales de diseño orientado a objetos conocidos como SOLID.
+  </div>
+</div>
+
+<script>
+  const scripts = [
+    { speaker: "Heidy Valentina", text: "Buenas tardes profesor y compañeros. Hoy nuestro grupo va a exponer el Principio Abierto/Cerrado (Open/Closed Principle), que representa la letra 'O' dentro de los principios fundamentales de diseño orientado a objetos conocidos como SOLID." },
+    { speaker: "Heidy Valentina", text: "Todo software en el mundo real evoluciona. Sin embargo, el riesgo aparece cuando para añadir algo nuevo debemos abrir y reescribir clases viejas que ya estaban en producción. OCP busca eliminar ese peligro." },
+    { speaker: "Heidy Valentina", text: "Nuestros objetivos son: comprender el principio formal, contrastar la visión histórica de Meyer frente a Martin, ver su aplicación técnica en código Java y definir sus límites con YAGNI." },
+    { speaker: "Heidy Valentina", text: "La idea nació en 1988 con Bertrand Meyer usando herencia estricta. Luego Robert Martin en 1996 demostró que las interfaces y el polimorfismo son mucho más limpios, formalizándolo como la 'O' de SOLID en el año 2000, y Larman aportó Protected Variation en 2001." },
+    { speaker: "Heidy Valentina", text: "Esta es la definición canónica: Las entidades deben estar abiertas a la extensión (nuevas funciones) pero cerradas a la modificación (el código base probado no se toca jamás)." },
+    { speaker: "Heidy Valentina", text: "La diferencia es fundamental: Meyer usaba herencia directa generando clases fuertemente acopladas. Martin usa interfaces y polimorfismo. Ahora le doy la palabra a mi compañero Santiago para ver esto en el código." },
+    { speaker: "Santiago Palma", text: "Aquí vemos el problema clásico: un switch o cascada de if-else. Cada vez que el cliente pide soportar una nueva figura geométrica, estamos forzados a abrir esta clase y alterar el método. Esto viola OCP." },
+    { speaker: "Santiago Palma", text: "La solución con OCP es crear la interfaz Shape con el método draw(). GraphicEditor solo conoce la interfaz. Si mañana añadimos Triangle o Hexagon, solo creamos una nueva clase. GraphicEditor permanece 100% blindado." },
+    { speaker: "Santiago Palma", text: "Para cerrar un módulo usamos 3 mecanismos: primero, abstracciones estables; segundo, despacho polimórfico; y tercero, inyección de dependencias para no instanciar con new." },
+    { speaker: "Santiago Palma", text: "Aquí se ve en un sistema comercial de descuentos. Con if-else, cada campaña comercial (Black Friday, Navidad) obliga a modificar el código central. Con OCP, cada descuento es una clase independiente." },
+    { speaker: "Santiago Palma", text: "Esto es exactamente cómo funciona Java en la vida real. En JDBC, Connection es una interfaz: Oracle o PostgreSQL crean su driver sin que Java tenga que modificarse. Ahora mi compañero Johan continuará con los patrones y límites." },
+    { speaker: "Johan Gonzalez", text: "En esta tabla comparativa vemos el antes y después: con OCP reducimos a cero el riesgo de regresiones y las pruebas unitarias son mucho más focalizadas, compensando con creces el pequeño esfuerzo inicial de diseño." },
+    { speaker: "Johan Gonzalez", text: "Los patrones de diseño del Gang of Four nacieron para satisfacer OCP: Strategy para algoritmos intercambiables, Decorator para añadir responsabilidades dinámicas y Template Method para fijar esqueletos invariables." },
+    { speaker: "Johan Gonzalez", text: "Pregunta clave: ¿Debemos aplicar OCP en todas partes? NO. Si creamos abstracciones para cosas que nunca van a variar, caemos en sobreingeniería. Aplicamos OCP solo cuando el cambio es frecuente y real (principio YAGNI)." },
+    { speaker: "Johan Gonzalez", text: "OCP no vive solo: se apoya en la 'D' de SOLID (Inversión de Dependencias) para depender de abstracciones, y en la 'L' (Liskov) para garantizar que las nuevas clases sean sustituibles de forma segura." },
+    { speaker: "Johan Gonzalez", text: "Como conclusión: el buen diseño consiste en encontrar el balance entre estabilidad y extensibilidad. Los invitamos a revisar nuestro repositorio en GitHub con el código funcional." },
+    { speaker: "Grupo 2", text: "Referencias bibliográficas clásicas de Meyer, Martin, Jacobson y Larman que sustentan nuestra investigación. Estamos listos para sus preguntas." }
+  ];
+
+  let currentSlide = 0;
+  const slides = document.querySelectorAll('.slide');
+  const indicator = document.getElementById('slide-indicator');
+  const authorSpan = document.getElementById('slide-author');
+  const notesPanel = document.getElementById('notes-panel');
+  const speakerBadge = document.getElementById('speaker-badge');
+  const speakerScript = document.getElementById('speaker-script');
+
+  function updateSlide(index) {
+    if (index < 0 || index >= slides.length) return;
+    slides[currentSlide].classList.remove('active');
+    currentSlide = index;
+    slides[currentSlide].classList.add('active');
+
+    indicator.textContent = `${currentSlide + 1} / ${slides.length}`;
+    const info = scripts[currentSlide] || { speaker: "Grupo 2", text: "" };
+    authorSpan.textContent = info.speaker;
+    speakerBadge.textContent = info.speaker;
+    speakerScript.textContent = info.text;
+  }
+
+  document.getElementById('btn-prev').addEventListener('click', () => updateSlide(currentSlide - 1));
+  document.getElementById('btn-next').addEventListener('click', () => updateSlide(currentSlide + 1));
+
+  document.getElementById('btn-notes').addEventListener('click', () => {
+    notesPanel.classList.toggle('open');
+  });
+
+  document.getElementById('btn-fs').addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'Space' || e.key === 'PageDown') {
+      e.preventDefault();
+      updateSlide(currentSlide + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      e.preventDefault();
+      updateSlide(currentSlide - 1);
+    } else if (e.key.toLowerCase() === 'n') {
+      notesPanel.classList.toggle('open');
+    } else if (e.key.toLowerCase() === 'f') {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  });
+
+  // Init
+  updateSlide(0);
+</script>
+</body>
+</html>
